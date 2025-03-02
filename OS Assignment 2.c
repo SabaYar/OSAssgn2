@@ -10,10 +10,6 @@ state_t state[NUM_PHILOSOPHERS];
 pthread_mutex_t mutex; // Global lock to control access
 pthread_cond_t condition[NUM_PHILOSOPHERS]; // condition variable for the philosopher
 
-void *philosopher_thread();  /* threads call this function */
-void pickup_forks();
-void return_forks();
-
 void *philosopher_thread(){
 	while (1) {
 		/* sleeps between 1 to 3 seconds */
@@ -29,8 +25,14 @@ void *philosopher_thread(){
     }
 }
 
-void pickup_forks(){
-
+void pickup_forks(int p_num){
+    pthread_mutex_lock(&mutex);
+    state[p_num] = HUNGRY;
+    test(p_num);
+    if (state[p_num] != EATING) {
+        pthread_cond_wait(&condition[p_num], &mutex); // Wait if forks are not available
+    }
+    pthread_mutex_unlock(&mutex);
 }
 
 void return_forks(){
@@ -38,19 +40,18 @@ void return_forks(){
 }
 
 // Checks if the philosopher can eat or not
-void test(){
+void test(int p_num){
+    // The if condition checks if the philosopher is HUNGRY and checks if both left and right neighbors are not eating
+    // If that is true only then it allows the philosophers to eat 
+    if (state[p_num] == HUNGRY && state[left(p_num)] != EATING && state[right(p_num)] != EATING) {
+        state[p_num] = EATING;
+        printf("The philosopher %d picks up forks and starts eating.\n", p_num);
 
+        pthread_cond_signal(&condition[p_num]); // Notify waiting philosopher
+    }
 }
 
 
-int main(int argc, char *argv[]){
-	pthread_t tid; /* the thread identifier */
-	pthread_attr_t attr; /* set of thread attributes */
-	/* set the default attributes of the thread */
-	pthread_attr_init(&attr);
-	/* create the thread */
-	pthread_create(&tid, &attr, philosopher_thread, argv[1]);
-	/* wait for the thread to exit */
-	pthread_join(tid,NULL);
+int main(){
     return 0;
 }
