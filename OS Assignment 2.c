@@ -17,48 +17,46 @@ void return_forks(int p_num);
 int left(int i) { return (i + NUM_PHILOSOPHERS - 1) % NUM_PHILOSOPHERS; }
 int right(int i) { return (i + 1) % NUM_PHILOSOPHERS; }
 
-void *philosopher_thread(void *arg) {
-    int p_num = *(int *)arg;
-    free(arg);
+void *philosopher_thread(){
+	while (1) {
+		/* sleeps between 1 to 3 seconds */
+        sleep(rand() % 3 + 1);
 
-    while (1) {       
-        sleep(rand() % 3 + 1); // Simulate thinking
+        pickup_forks();
+		/* sleeps between 1 to 3 seconds */
+        sleep(rand() % 3 + 1);
 
-        pickup_forks(p_num);
-
-        printf("Philosopher %d is eating.\n", p_num);
-        sleep(rand() % 3 + 1); // Simulate eating
-
-        return_forks(p_num);
+        return_forks();
+		/* exits the thread */
+		pthread_exit(0);
     }
 }
 
 // Function to pick up forks
 void pickup_forks(int p_num) {
     pthread_mutex_lock(&mutex);
-
-    while (state[left(p_num)] == EATING || state[right(p_num)] == EATING) {
-        pthread_cond_wait(&condition[p_num], &mutex);
+    state[p_num] = HUNGRY;
+    test(p_num);
+    if (state[p_num] != EATING) {
+        pthread_cond_wait(&condition[p_num], &mutex); // Wait if forks are not available
     }
-
-    state[p_num] = EATING;
-    printf("Philosopher %d picks up forks and starts eating.\n", p_num);
-
     pthread_mutex_unlock(&mutex);
 }
 
+void return_forks(){
 
-void return_forks(int p_num) {
-    pthread_mutex_lock(&mutex);
+}
 
-    state[p_num] = THINKING;
-    printf("Philosopher %d has stopped eating and returns forks.\n", p_num);
-    printf("Philosopher %d is thinking.\n", p_num);
-    // Notifying neighbors that the current philosopher has stopped eating 
-    pthread_cond_signal(&condition[left(p_num)]);
-    pthread_cond_signal(&condition[right(p_num)]);
+// Checks if the philosopher can eat or not
+void test(int p_num){
+    // The if condition checks if the philosopher is HUNGRY and checks if both left and right neighbors are not eating
+    // If that is true only then it allows the philosophers to eat 
+    if (state[p_num] == HUNGRY && state[left(p_num)] != EATING && state[right(p_num)] != EATING) {
+        state[p_num] = EATING;
+        printf("The philosopher %d picks up forks and starts eating.\n", p_num);
 
-    pthread_mutex_unlock(&mutex);
+        pthread_cond_signal(&condition[p_num]); // Notify waiting philosopher
+    }
 }
 
 
@@ -78,7 +76,6 @@ int main() {
         int *id = malloc(sizeof(int));
         *id = i;
         pthread_create(&philosophers[i], NULL, philosopher_thread, id);
-        printf("Philosopher %d is thinking.\n", *id);
     }
 
     // Join threads
