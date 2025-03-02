@@ -4,11 +4,14 @@
 #include <unistd.h>
 
 #define NUM_PHILOSOPHERS 5 // Number of the philosophers
-typedef enum { THINKING, EATING } state_t; // State of the philosopher
+typedef enum { THINKING, HUNGRY, EATING } state_t; // State of the philosopher
 state_t state[NUM_PHILOSOPHERS];
 
 pthread_mutex_t mutex; // Global lock to control access
 pthread_cond_t condition[NUM_PHILOSOPHERS]; // condition variable for the philosopher
+
+int left(int i) { return (i + NUM_PHILOSOPHERS - 1) % NUM_PHILOSOPHERS; }
+int right(int i) { return (i + 1) % NUM_PHILOSOPHERS; }
 
 void *philosopher_thread(){
 	while (1) {
@@ -52,6 +55,42 @@ void test(int p_num){
 }
 
 
-int main(){
+int main() {
+    // pthread_t tid; /* the thread identifier */
+	// pthread_attr_t attr; /* set of thread attributes */
+	// /* set the default attributes of the thread */
+	// pthread_attr_init(&attr);
+	// /* create the thread */
+	// pthread_create(&tid, &attr, philosopher_thread, argv[1]);
+	// /* wait for the thread to exit */
+	// pthread_join(tid,NULL);
+    int i;
+    pthread_t philosophers[NUM_PHILOSOPHERS];
+
+    // Initialize the mutex and condition variables
+    pthread_mutex_init(&mutex, NULL);
+    for (i = 0; i < NUM_PHILOSOPHERS; i++) {
+        pthread_cond_init(&condition[i], NULL);
+        state[i] = THINKING;
+    }
+
+    // Create philosopher threads
+    for (i = 0; i < NUM_PHILOSOPHERS; i++) {
+        int *id = malloc(sizeof(int));
+        *id = i;
+        pthread_create(&philosophers[i], NULL, philosopher_thread, id);
+    }
+
+    // Join threads
+    for (i = 0; i < NUM_PHILOSOPHERS; i++) {
+        pthread_join(philosophers[i], NULL);
+    }
+
+    // Destroy mutex and condition variables
+    pthread_mutex_destroy(&mutex);
+    for (i = 0; i < NUM_PHILOSOPHERS; i++) {
+        pthread_cond_destroy(&condition[i]);
+    }
+
     return 0;
 }
